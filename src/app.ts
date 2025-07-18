@@ -1,10 +1,20 @@
 import fastify from "fastify";
-import { knex } from "./database";
-
+import { userRoutes } from "./routes/users";
+import { mealsRoutes } from "./routes/meals";
+import cookie from "@fastify/cookie";
+import { handleErrors } from "./middlewares/handleErrors";
 
 export const app = fastify()
 
-app.get('/test', async ()=> {
-    const test = await knex('sqlite_schema').select('*')
-    return test
+app.register(cookie)
+
+app.register(userRoutes, {
+    prefix: 'users'
 })
+
+app.register(mealsRoutes, {
+    prefix: 'meals'
+})
+
+app.setErrorHandler(handleErrors);
+

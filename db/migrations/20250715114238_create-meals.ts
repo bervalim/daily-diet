@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-    await knex.schema.createTable('meals', (table) => {
+    await knex.schema.createTable('Meals', (table) => {
         table.uuid('id').primary,
         table.string('name', 255).notNullable(),
         table.text('description')
@@ -13,8 +13,9 @@ export async function up(knex: Knex): Promise<void> {
           .notNullable()
           .references("id")
           .inTable("users");
-        table.timestamps(true, true);
-        table.timestamp('deleted_at').nullable();
+          table.timestamp('created_at').defaultTo(knex.fn.now()).notNullable();
+        table.timestamp("updated_at").nullable();
+        table.timestamp("deleted_at").nullable();
     })
 }
 

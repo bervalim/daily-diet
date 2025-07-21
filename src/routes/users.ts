@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod"
 import { knex } from "../database";
 import crypto from "node:crypto";
+import AppError from "../errors/App.error";
+import { validateWithZod } from "../utils/validateWithZod";
 
 export async function userRoutes(app: FastifyInstance) {
     app.post('/', async (request, reply)=> {
@@ -10,25 +12,16 @@ export async function userRoutes(app: FastifyInstance) {
             email: z.email()
         })
 
-        const parsedBodyRequest = createUserBodySchema.safeParse(request.body)
-
-        if(!parsedBodyRequest.success){
-            throw new Error(JSON.stringify(parsedBodyRequest.error.flatten().fieldErrors))
-        }
-
-        const {name, email} = parsedBodyRequest.data
+        const {name, email} = validateWithZod(createUserBodySchema, request.body)
 
         const emailExists = await knex("Users")
             .where({ email })
             .first()
 
         if(emailExists) {
-            return reply.status(409).send({
-                error: 'Email already exists'
-            })
+           throw new AppError('Email Already exists',409)
         } 
-        // console.log('validatedEmail', validatedEmail);
-
+       
         let sessionId = request.cookies.sessionId
 
         if(!sessionId){
@@ -39,13 +32,33 @@ export async function userRoutes(app: FastifyInstance) {
             })
         }
 
-        await knex("Users").insert({
+        const [user] = await knex("Users").insert({
             id: crypto.randomUUID(),
             name,
             email,
             sessionId
+        }).returning('*')
+
+        return reply.status(201).send(user)
+    })
+
+    app.get('/:id', async (request, reply)=>{
+        const getUserRouteSchema = z.object({
+            id: z.string()
         })
 
-        return reply.status(201).send()
+        const { id } = validateWithZod(getUserRouteSchema, request.params)
+
+        const sessionId = request.cookies.sessionId
+
+        if(!sessionId){
+            throw new AppError('Unauthorized', 401)
+        }
+
+        const user  = await knex("Users").where({sessionId , id}).first()
+
+        if(!user) throw new AppError('User not Found', 404)
+
+        return { user }
     })
 }

@@ -4,6 +4,7 @@ import { knex } from "../database";
 import crypto from "node:crypto";
 import AppError from "../errors/App.error";
 import { validateWithZod } from "../utils/validateWithZod";
+import { checkSessionIdExists } from "../middlewares/checkSessionIdExists";
 
 export async function userRoutes(app: FastifyInstance) {
     app.post('/', async (request, reply)=> {
@@ -42,23 +43,23 @@ export async function userRoutes(app: FastifyInstance) {
         return reply.status(201).send(user)
     })
 
-    app.get('/:id', async (request, reply)=>{
+    app.get(
+      "/:id",
+      { preHandler: [checkSessionIdExists] },
+      async (request, reply) => {
         const getUserRouteSchema = z.object({
-            id: z.string()
-        })
+          id: z.string(),
+        });
 
-        const { id } = validateWithZod(getUserRouteSchema, request.params)
+        const { id } = validateWithZod(getUserRouteSchema, request.params);
 
-        const sessionId = request.cookies.sessionId
+        const { sessionId } = request.cookies;
 
-        if(!sessionId){
-            throw new AppError('Unauthorized', 401)
-        }
+        const user = await knex("Users").where({ sessionId, id }).first();
 
-        const user  = await knex("Users").where({sessionId , id}).first()
+        if (!user) throw new AppError("User not Found", 404);
 
-        if(!user) throw new AppError('User not Found', 404)
-
-        return { user }
-    })
+        return { user };
+      }
+    );
 }

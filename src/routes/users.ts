@@ -9,9 +9,9 @@ import { checkSessionIdExists } from "../middlewares/checkSessionIdExists";
 export async function userRoutes(app: FastifyInstance) {
     app.post('/', async (request, reply)=> {
         const createUserBodySchema = z.object({
-            name: z.string(),
-                    email: z.email()
-        })
+          name: z.string(),
+          email: z.email(),
+        });
 
         const {name, email} = validateWithZod(createUserBodySchema, request.body)
 

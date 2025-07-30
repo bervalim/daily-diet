@@ -186,7 +186,67 @@ export async function mealsRoutes(app: FastifyInstance){
     app.get(
       "/metrics",
       { preHandler: [checkSessionIdExists] },
-      async (request, reply) => {}
+      async (request, reply) => {
+        
+          const { sessionId } = request.cookies;
+
+          const user = await knex("Users").where({ sessionId }).first()
+
+          if (!user) throw new AppError("User not Found", 404);
+
+          const totalMealsQuery = await knex("Meals")
+            .where({ userId: user.id })
+            .whereNull("deleted_at")
+            .count("id",{as: 'totalMeals'})
+            .first()
+
+          const onDietMealsQuery = await knex("Meals")
+            .where({userId: user.id})
+            .whereNull("deleted_at")
+            .where({ isOnDiet: true })
+            .count("id", {as: 'onDietMeals'})
+            .first()
+
+          const outOfDietMealsQuery = await knex("Meals")
+            .where({userId: user.id})
+            .whereNull("deleted_at")
+            .where({ isOnDiet: false })
+            .count("id", {as: 'outOfDietMeals'})
+            .first()
+
+          const mealsQuery = await knex("Meals")
+            .where({userId: user.id})
+            .whereNull("deleted_at")
+            .orderBy([{ column: 'date', order: 'asc'}, {column: 'hour', order: 'asc'}])
+            .select("isOnDiet")
+
+          let bestSequence = 0
+          let currentSequence = 0
+
+          for (const meal of mealsQuery){
+            if(meal.isOnDiet){
+              currentSequence++
+              
+            if(currentSequence > bestSequence){
+              bestSequence = currentSequence
+            }
+
+            }else{
+              currentSequence = 0
+            }
+          }
+        
+        const totalMeals = Number(totalMealsQuery?.totalMeals || 0)
+        const onDietMeals = Number(onDietMealsQuery?.onDietMeals || 0)
+
+        return reply.send({
+          totalMeals,
+          onDietMeals,
+          outOfDietMeals: Number(outOfDietMealsQuery?.outOfDietMeals || 0),
+          bestSequence,
+          percentageOfMealsOnDiet: totalMeals === 0 ? 0 :(onDietMeals / totalMeals) * 100
+        })
+      }
     );
 
 

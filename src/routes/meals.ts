@@ -244,7 +244,7 @@ export async function mealsRoutes(app: FastifyInstance){
           onDietMeals,
           outOfDietMeals: Number(outOfDietMealsQuery?.outOfDietMeals || 0),
           bestSequence,
-          percentageOfMealsOnDiet: totalMeals === 0 ? 0 :(onDietMeals / totalMeals) * 100
+          percentageOfMealsOnDiet: totalMeals === 0 ? 0 : Number(((onDietMeals / totalMeals) * 100).toFixed(2))
         })
       }
     );
